@@ -35,36 +35,36 @@ logging.basicConfig(
 
 def check_tokens():
     """Проверка переменных окружения."""
-    variables = [
+    variables = (
         PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID,
         RETRY_PERIOD, ENDPOINT, HEADERS, HOMEWORK_VERDICTS
-    ]
-    for variable in variables:
-        if not variable:
-            logging.critical(variable)
-            raise ValueError('Ошибка при проверке переменных окружения')
+    )
+    if not all(variables):
+        logging.critical(variables)
+        raise ValueError('Ошибка при проверке переменных окружения')
 
 
 def send_message(bot, message):
     """Отправка сообщения."""
     try:
+        logging.debug('Сообщение отправляется')
         message_sent = bot.send_message(TELEGRAM_CHAT_ID, message)
         logging.debug(f'Сообщение отправлено:{message_sent}')
-    except Exception as error:
-        logging.error(error)
+    except Exception:
+        raise Exception('Ошибка при отправке сообщения в Telegram')
 
 
 def get_api_answer(timestamp):
     """Запрос к API сервису."""
     try:
+        logging.debug('Запрос к API сервису')
         homework_statuses = requests.get(
             ENDPOINT, headers=HEADERS, params={'from_date': timestamp}
         )
-    except requests.RequestException as error:
-        logging.error(error)
+    except requests.RequestException:
+        raise AssertionError('Ошибка при запросе API')
     else:
-        status_code = homework_statuses.status_code
-        if status_code != requests.codes.ok:
+        if homework_statuses.status_code != requests.codes.ok:
             raise requests.HTTPError
         return homework_statuses.json()
 
@@ -73,10 +73,8 @@ def check_response(response):
     """Проверка ответа API."""
     try:
         if not isinstance(response['homeworks'], list):
-            # logging.error(error)
             raise TypeError
-    except KeyError as error:
-        logging.error(error)
+    except KeyError:
         raise KeyError
 
 
@@ -85,8 +83,7 @@ def parse_status(homework):
     try:
         homework_name = homework['homework_name']
         verdict = HOMEWORK_VERDICTS[homework['status']]
-    except KeyError as error:
-        logging.error(error)
+    except KeyError:
         raise KeyError
     else:
         return f'Изменился статус проверки работы "{homework_name}". {verdict}'
